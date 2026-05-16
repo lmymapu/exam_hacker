@@ -10,7 +10,8 @@
 
 set -e  # Exit immediately on error
 
-IMAGE_NAME="exam-hacker-dev:latest"
+# change the image name if needed
+IMAGE_NAME="exam-hacker-dev:2.0"
 DATE=$(date +%Y-%m-%d)
 CONTAINER_NAME="exam-hacker-${DATE}"
 XAUTH_FILE="/tmp/.docker.xauth"
@@ -118,6 +119,9 @@ docker run -it \
     \
     `# ── Timezone (set to Germany) ─────────────────────────────────────────` \
     -e TZ=Europe/Berlin \
+    \
+    `# ── Readline: prefix history search via arrow keys ────────────────────` \
+    -e INPUTRC=/workspace/.inputrc \
     \
     `# ── Shared memory (prevents Qt/OpenCV crashes under load) ────────────` \
     --shm-size=4g \
