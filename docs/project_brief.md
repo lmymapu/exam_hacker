@@ -192,6 +192,7 @@ $HOME/exam-extractor/
 |---|---|---|
 | 1 | Docker image build + GPU verification | ✅ Done |
 | 2 | Container run script + X11 forwarding | ✅ Done |
+| 2.5 | PaddleOCR model download + cache setup | ✅ Done — models at `/workspace/proj/AI_models/.paddleocr/`, env var `PADDLE_PDX_CACHE_HOME` set in `~/.bashrc` |
 | 3 | PaddleOCR Python prototype (test on one photo) | ⬜ Todo |
 | 4 | C++ project skeleton + CMake + Qt6 window | ⬜ Todo |
 | 5 | C++ ↔ Python OCR bridge + JSON parsing | ⬜ Todo |
@@ -209,6 +210,11 @@ $HOME/exam-extractor/
 | 2026-04-20 | X auth file `/tmp/.docker.xauth` deleted on reboot | Moved to `$HOME/.docker.xauth` — persists across reboots |
 | 2026-04-20 | `/tmp/.docker.xauth` became a directory after reboot | `reattach_container.sh` does `rm -rf` before `touch` |
 | 2026-04-20 | C++ ↔ PaddleOCR integration strategy | Use Python subprocess bridge (QProcess) for now; migrate to C++ inference API later if needed |
+| 2026-06-07 | Do not bake model weights into Docker image | Models are large (~200 MB). Use bind-mount persistence instead: download once via `scripts/download_models.py`, models persist on host at `/workspace/proj/AI_models/.paddleocr/` across container restarts |
+| 2026-06-07 | PaddleX model cache env var — wrong variable names | `PADDLEX_HOME`, `PADDLE_HOME`, `PADDLEOCR_HOME` are all ignored by PaddleX. The correct variable (confirmed from PaddleX 3.5.2 source `paddlex/utils/cache.py` line 29) is **`PADDLE_PDX_CACHE_HOME`** |
+| 2026-06-07 | `PADDLE_PDX_CACHE_HOME` must be set in shell, not in Python | PaddleX evaluates `CACHE_DIR = os.environ.get("PADDLE_PDX_CACHE_HOME", ...)` as a module-level constant at import time. Setting it via `os.environ` inside a Python script has no effect. Must be in `~/.bashrc` inside the container |
+| 2026-06-07 | Model cache path inside container | Set `export PADDLE_PDX_CACHE_HOME=/workspace/proj/AI_models/.paddleocr` in `~/.bashrc`. Models stored here persist on the host filesystem via the `$HOME → /workspace` bind mount |
+| 2026-06-07 | PaddleX version in container | 3.5.2. Models used: `PP-OCRv5_server_det`, `PP-OCRv5_server_rec`, `PPStructureV3` (layout analysis) |
 
 ---
 
