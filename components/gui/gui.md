@@ -1,0 +1,1 @@
+This folder is to implement the GUI components of the SW.

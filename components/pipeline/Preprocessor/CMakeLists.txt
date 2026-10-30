@@ -12,7 +12,7 @@ add_library(exam_preprocessor
 )
 target_include_directories(exam_preprocessor
     PUBLIC
-        ${CMAKE_CURRENT_SOURCE_DIR}/src
+        ${CMAKE_CURRENT_SOURCE_DIR}/inc
         ${OpenCV_INCLUDE_DIRS}
 )
 target_link_libraries(exam_preprocessor PUBLIC ${OpenCV_LIBS})
