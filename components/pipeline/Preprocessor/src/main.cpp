@@ -7,13 +7,16 @@
 #include <fstream>
 #include <iomanip>
 #include <iostream>
+#include <optional>
 #include <stdexcept>
 #include <string>
 
 namespace {
 
 void logPreprocessDiagnostics(const exam_hacker::PreprocessDiagnostics& diagnostics) {
-    std::cout << "[Preprocessor] Paper boundary detected: "
+    std::cout << "[Preprocessor] CUDA acceleration: "
+              << (diagnostics.cudaEnabled ? "enabled" : "unavailable; using CPU fallback") << '\n'
+              << "[Preprocessor] Paper boundary detected: "
               << (diagnostics.pageBoundaryDetected ? "yes" : "no") << '\n'
               << "[Preprocessor] Estimated residual deskew angle: "
               << std::fixed << std::setprecision(2)
@@ -38,7 +41,6 @@ void saveDiagnostics(const exam_hacker::PreprocessDiagnostics& diagnostics,
         metadata << (i == 0 ? "" : ", ") << "[" << point.x << ", " << point.y << "]";
     }
     metadata << "],\n  \"stages\": [\n";
-
     for (std::size_t i = 0; i < diagnostics.stages.size(); ++i) {
         const auto& stage = diagnostics.stages[i];
         const std::string filename = std::to_string(i + 1) + "_" + stage.name + ".png";
@@ -55,35 +57,67 @@ void saveDiagnostics(const exam_hacker::PreprocessDiagnostics& diagnostics,
 } // namespace
 
 int main(int argc, char* argv[]) {
-    if (argc != 3 && argc != 4) {
-        std::cerr << "Usage: exam_preprocess <input-image> <output-image> [debug-directory]\n";
+    if (argc < 3) {
+        std::cerr << "Usage: exam_preprocess <input-image> <output-image> "
+                     "[--device cpu|gpu] [--debug-dir <directory>]\n"
+                     "       A positional debug directory is also accepted for compatibility.\n";
         return 2;
     }
 
     try {
+        bool useCuda = true;
+        std::optional<std::filesystem::path> debugDirectory;
+        for (int i = 3; i < argc; ++i) {
+            const std::string argument = argv[i];
+            if (argument == "--device") {
+                if (i + 1 >= argc) {
+                    throw std::invalid_argument("--device requires either 'cpu' or 'gpu'");
+                }
+                const std::string device = argv[++i];
+                if (device == "cpu") {
+                    useCuda = false;
+                } else if (device == "gpu") {
+                    useCuda = true;
+                } else {
+                    throw std::invalid_argument("--device must be either 'cpu' or 'gpu'");
+                }
+            } else if (argument == "--debug-dir") {
+                if (i + 1 >= argc) {
+                    throw std::invalid_argument("--debug-dir requires a directory path");
+                }
+                debugDirectory = argv[++i];
+            } else if (!argument.empty() && argument[0] != '-' && !debugDirectory) {
+                // Keep accepting the prior third positional debug-directory argument.
+                debugDirectory = argument;
+            } else {
+                throw std::invalid_argument("Unknown or repeated argument: " + argument);
+            }
+        }
+
         const cv::Mat input = cv::imread(argv[1], cv::IMREAD_COLOR);
         if (input.empty()) {
             std::cerr << "Could not read input image: " << argv[1] << '\n';
             return 1;
         }
 
-        exam_hacker::Preprocessor preprocessor;
+        exam_hacker::PreprocessorOptions options;
+        options.useCuda = useCuda;
+        exam_hacker::Preprocessor preprocessor(options);
         exam_hacker::PreprocessDiagnostics diagnostics;
+        diagnostics.captureStageImages = debugDirectory.has_value();
         const cv::Mat output = preprocessor.process(input, &diagnostics);
+        std::cout << "[Preprocessor] Requested backend: " << (useCuda ? "GPU" : "CPU only") << '\n';
         logPreprocessDiagnostics(diagnostics);
         if (!cv::imwrite(argv[2], output)) {
             std::cerr << "Could not write output image: " << argv[2] << '\n';
             return 1;
         }
 
-        const std::filesystem::path outputPath(argv[2]);
-        const std::filesystem::path debugDirectory = argc == 4
-            ? std::filesystem::path(argv[3])
-            : outputPath.parent_path() / (outputPath.stem().string() + "_debug");
-        saveDiagnostics(diagnostics, debugDirectory);
-
         std::cout << "Wrote preprocessed image to " << argv[2] << '\n';
-        std::cout << "Wrote preprocessing stages and metadata to " << debugDirectory.string() << '\n';
+        if (debugDirectory) {
+            saveDiagnostics(diagnostics, *debugDirectory);
+            std::cout << "Wrote preprocessing stages and metadata to " << debugDirectory->string() << '\n';
+        }
     } catch (const std::exception& error) {
         std::cerr << "Preprocessing failed: " << error.what() << '\n';
         return 1;
