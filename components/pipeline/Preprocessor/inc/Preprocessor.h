@@ -13,6 +13,8 @@ struct PreprocessStageArtifact {
 };
 
 struct PreprocessDiagnostics {
+    bool cudaEnabled = false;
+    bool captureStageImages = false;
     bool pageBoundaryDetected = false;
     double residualDeskewDegrees = 0.0;
     std::vector<cv::Point2f> pageCorners;
@@ -21,6 +23,7 @@ struct PreprocessDiagnostics {
 
 /** Options for the scan/photo cleanup performed before layout analysis. */
 struct PreprocessorOptions {
+    bool useCuda = true;
     bool rectifyPage = true;
     bool deskew = true;
     bool denoise = true;
@@ -61,6 +64,7 @@ private:
     cv::Mat normalizeContrast(const cv::Mat& input) const;
 
     PreprocessorOptions options_;
+    bool cudaEnabled_ = false;
 };
 
 } // namespace exam_hacker

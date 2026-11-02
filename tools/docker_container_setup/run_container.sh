@@ -11,7 +11,7 @@
 set -e  # Exit immediately on error
 
 # change the image name if needed
-IMAGE_NAME="exam-hacker-dev:2.0"
+IMAGE_NAME="exam-hacker-dev:3.0"
 DATE=$(date +%Y-%m-%d)
 CONTAINER_NAME="exam-hacker-${DATE}"
 XAUTH_FILE="/tmp/.docker.xauth"
